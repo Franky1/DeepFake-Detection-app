@@ -1,0 +1,18 @@
+channels:
+  - anaconda
+  - conda-forge
+  - defaults
+dependencies:
+    - dlib
+    - numpy
+    - scipy
+    - cmake
+    - pip:
+        - tensorflow==2.5.0
+        - streamlit
+        - opencv-python-headless
+        - pillow
+        - pytube
+        - matplotlib
+        - cuda-python
+        - cudnn--python-wrappers
