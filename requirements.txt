@@ -1,0 +1,8 @@
+numpy
+Pillow
+scipy
+opencv-python-headless
+tensorflow-cpu
+pytube
+ipython
+streamlit

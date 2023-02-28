@@ -1,38 +1,37 @@
-import streamlit as st
-import cv2
-import numpy as np
-from PIL import Image
-# Imported libraries
-from IPython.display import display, Javascript, Image
-from base64 import b64decode, b64encode
-import numpy as np
-import cv2
-import PIL
 import io
-import html
-import time
-import matplotlib.pyplot as plt
-from tensorflow import keras
-from tensorflow.keras import layers
-from tensorflow.keras.layers import Input, Dense, Flatten, Conv2D, MaxPooling2D, BatchNormalization, Dropout, Reshape, Concatenate, LeakyReLU
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
-from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.models import Model
-from tensorflow.keras.applications.mobilenet_v2 import MobileNetV2,preprocess_input as mobilenet_v2_preprocess_input
-import random
 import os
+import logging
+from base64 import b64decode, b64encode
+from math import floor
 from os import listdir
 from os.path import isfile, join
-from pytube import YouTube
+import warnings
+# Suppress DeprecationWarnings from scipy:
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-    
-
-from math import floor
-from scipy.ndimage.interpolation import zoom, rotate
+import cv2
+import numpy as np
+import PIL
+import streamlit as st
 import tensorflow as tf
-config = tf.compat.v1.ConfigProto()
-config.gpu_options.allow_growth = True
-session = tf.compat.v1.InteractiveSession(config=config)
+from IPython.display import Image, Javascript, display
+from PIL import Image
+from pytube import YouTube
+from scipy.ndimage.interpolation import rotate, zoom
+from tensorflow.keras.applications.mobilenet_v2 import \
+    preprocess_input as mobilenet_v2_preprocess_input
+from tensorflow.keras.layers import (BatchNormalization, Conv2D,
+                                    Dense, Dropout, Flatten, Input, LeakyReLU,
+                                    MaxPooling2D)
+from tensorflow.keras.models import Model
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+# Suppress TensorFlow warnings about CPU/GPU instructions:
+# tf.get_logger().setLevel(logging.ERROR)
+
+# config = tf.compat.v1.ConfigProto()
+# config.gpu_options.allow_growth = True
+# session = tf.compat.v1.InteractiveSession(config=config)
 
 st.header("Deep Fake Detector")
 
@@ -66,28 +65,28 @@ def main():
       with open(uploaded_file.name,"wb") as f:
         f.write(uploaded_file.getbuffer())
 
-      # Creating a Dictionary to define Image Dimensions 
+      # Creating a Dictionary to define Image Dimensions
       image_dimensions = {'height':256, 'width':256, 'channels':3}
       # Create a Classifier class
       class Classifier:
-        def __init__():
+        def __init__(self):
           self.model = 0
-                    
+
         def predict(self, x):
           return self.model.predict(x)
-                      
+
         def fit(self, x, y):
           return self.model.train_on_batch(x, y)
-                        
+
         def get_accuracy(self, x, y):
           return self.model.test_on_batch(x, y)
-        
+
         def load(self, path):
           self.model.load_weights(path)
                             # Create a MesoNet class using the Classifier
-                            
+
       class Meso4(Classifier):
-        
+
         def __init__(self, learning_rate = 0.001):
           self.model = self.init_model()
           # Defined a gradient Descent optimizer variable and set the LR in the constructor
@@ -101,25 +100,25 @@ def main():
           x = Input(shape = (image_dimensions['height'],
                             image_dimensions['width'],
                             image_dimensions['channels']))
-                                      
+
           x1 = Conv2D(8, (3, 3), padding='same', activation = 'relu')(x)
-                                                    
+
           x1 = BatchNormalization()(x1)
-                                                    
+
           x1 = MaxPooling2D(pool_size=(2, 2), padding='same')(x1)
-                                                            
+
           x2 = Conv2D(8, (5, 5), padding='same', activation = 'relu')(x1)
           x2 = BatchNormalization()(x2)
           x2 = MaxPooling2D(pool_size=(2, 2), padding='same')(x2)
-                            
+
           x3 = Conv2D(16, (5, 5), padding='same', activation = 'relu')(x2)
           x3 = BatchNormalization()(x3)
           x3 = MaxPooling2D(pool_size=(2, 2), padding='same')(x3)
-                            
+
           x4 = Conv2D(16, (5, 5), padding='same', activation = 'relu')(x3)
           x4 = BatchNormalization()(x4)
           x4 = MaxPooling2D(pool_size=(4, 4), padding='same')(x4)
-                            
+
           y = Flatten()(x4)
           y = Dropout(0.5)(y)
           y = Dense(16)(y)
@@ -132,8 +131,8 @@ def main():
       if st.button("Predict"):
         meso = Meso4()
         meso.load("saved_model/Meso4_DF")
-        
-        
+
+
         dataGenerator = ImageDataGenerator(rescale=1./255)
         generator = dataGenerator.flow_from_directory('test',
                                                       target_size=(256, 256),
@@ -143,18 +142,18 @@ def main():
         # Evaluating Prediction
         X, y = generator.next()
 
-                                            
+
         st.write('Predicted :', meso.predict(X), '\nReal class :', y)
-                                                
-        st.write("predictions closer to 0 are fake and predictions closer to 1 are real") 
-                    
-  
+
+        st.write("predictions closer to 0 are fake and predictions closer to 1 are real")
+
+
 
   elif choice == "Web-cam prediction":
     st.subheader("Predict with web-cam")
     img_file_buffer = st.camera_input("Take a picture")
     if img_file_buffer is not None:
-      
+
       bytes_data = img_file_buffer.getvalue()
       cv2_img = cv2.imdecode(np.frombuffer(bytes_data, np.uint8), cv2.IMREAD_COLOR)
       def js_to_image(js_reply):
@@ -203,16 +202,16 @@ def main():
           }
           ''')
         display(js)
-        
+
         data = eval_js('takePhoto({})'.format(quality))
-  
-        img = js_to_image(data) 
-  
+
+        img = js_to_image(data)
+
         gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
         st.write(gray.shape)
-  
+
         faces = face_cascade.detectMultiScale(gray)
-  
+
         for (x,y,w,h) in faces:
           img = cv2.rectangle(img,(x,y),(x+w,y+h),(255,0,0),2)
           cv2.imwrite(filename, img)
@@ -228,24 +227,24 @@ def main():
     image_dimensions = {'height':256, 'width':256, 'channels':3}
     # Create a Classifier class
     class Classifier:
-      def __init__():
+      def __init__(self):
         self.model = 0
-                  
+
       def predict(self, x):
         return self.model.predict(x)
-                    
+
       def fit(self, x, y):
         return self.model.train_on_batch(x, y)
-                      
+
       def get_accuracy(self, x, y):
         return self.model.test_on_batch(x, y)
-      
+
       def load(self, path):
         self.model.load_weights(path)
                           # Create a MesoNet class using the Classifier
-                          
+
     class Meso4(Classifier):
-      
+
       def __init__(self, learning_rate = 0.001):
         self.model = self.init_model()
                                   # Defined a gradient Descent optimizer variable and set the LR in the constructor
@@ -263,21 +262,21 @@ def main():
         x1 = Conv2D(8, (3, 3), padding='same', activation = 'relu')(x)
                                                   # Batch Normalization
         x1 = BatchNormalization()(x1)
-                                                  # Max Pooling 
+                                                  # Max Pooling
         x1 = MaxPooling2D(pool_size=(2, 2), padding='same')(x1)
-                                                          
+
         x2 = Conv2D(8, (5, 5), padding='same', activation = 'relu')(x1)
         x2 = BatchNormalization()(x2)
         x2 = MaxPooling2D(pool_size=(2, 2), padding='same')(x2)
-                          
+
         x3 = Conv2D(16, (5, 5), padding='same', activation = 'relu')(x2)
         x3 = BatchNormalization()(x3)
         x3 = MaxPooling2D(pool_size=(2, 2), padding='same')(x3)
-                          
+
         x4 = Conv2D(16, (5, 5), padding='same', activation = 'relu')(x3)
         x4 = BatchNormalization()(x4)
         x4 = MaxPooling2D(pool_size=(4, 4), padding='same')(x4)
-                          
+
         y = Flatten()(x4)
         y = Dropout(0.5)(y)
         y = Dense(16)(y)
@@ -290,8 +289,8 @@ def main():
     if st.button("Predict"):
       meso = Meso4()
       meso.load("saved_model/Meso4_DF")
-      
-      
+
+
       dataGenerator = ImageDataGenerator(rescale=1./255)
       generator = dataGenerator.flow_from_directory('test',
                                                     target_size=(256, 256),
@@ -301,9 +300,9 @@ def main():
                 # Evaluating Prediction
       X, y = generator.next()
 
-                                          
+
       st.write('Predicted :', meso.predict(X), '\nReal class :', y)
-                                              
+
       st.write("predictions closer to 0 are fake and predictions closer to 1 are real")
 
   elif choice == "Youtube Prediction":
@@ -324,24 +323,24 @@ def main():
       image_dimensions = {'height':256, 'width':256, 'channels':3}
       # Create a Classifier class
       class Classifier:
-        def __init__():
+        def __init__(self):
           self.model = 0
-                    
+
         def predict(self, x):
           return self.model.predict(x)
-                      
+
         def fit(self, x, y):
           return self.model.train_on_batch(x, y)
-                        
+
         def get_accuracy(self, x, y):
           return self.model.test_on_batch(x, y)
-        
+
         def load(self, path):
           self.model.load_weights(path)
-                            
+
       # Create a MesoNet class using the Classifier
       class Meso4(Classifier):
-        
+
         def __init__(self, learning_rate = 0.001):
           self.model = self.init_model()
           # Defined a gradient Descent optimizer variable and set the LR in the constructor
@@ -359,21 +358,21 @@ def main():
           x1 = Conv2D(8, (3, 3), padding='same', activation = 'relu')(x)
                                                     # Batch Normalization
           x1 = BatchNormalization()(x1)
-                                                    # Max Pooling 
+                                                    # Max Pooling
           x1 = MaxPooling2D(pool_size=(2, 2), padding='same')(x1)
-                                                            
+
           x2 = Conv2D(8, (5, 5), padding='same', activation = 'relu')(x1)
           x2 = BatchNormalization()(x2)
           x2 = MaxPooling2D(pool_size=(2, 2), padding='same')(x2)
-                            
+
           x3 = Conv2D(16, (5, 5), padding='same', activation = 'relu')(x2)
           x3 = BatchNormalization()(x3)
           x3 = MaxPooling2D(pool_size=(2, 2), padding='same')(x3)
-                            
+
           x4 = Conv2D(16, (5, 5), padding='same', activation = 'relu')(x3)
           x4 = BatchNormalization()(x4)
           x4 = MaxPooling2D(pool_size=(4, 4), padding='same')(x4)
-                            
+
           y = Flatten()(x4)
           y = Dropout(0.5)(y)
           y = Dense(16)(y)
@@ -390,19 +389,19 @@ def main():
           self.container = imageio.get_reader(path, 'ffmpeg')
           self.length = self.container.count_frames()
           self.fps = self.container.get_meta_data()['fps']
-            
+
         def init_head(self):
           self.container.set_image_index(0)
-            
+
         def next_frame(self):
           self.container.get_next_data()
-            
+
         def get(self, key):
           return self.container.get_data(key)
-            
+
         def __call__(self, key):
           return self.get(key)
-            
+
         def __len__(self):
           return self.length
 
@@ -411,7 +410,7 @@ def main():
         def __init__(self, path, load_first_face = True):
           super().__init__(path)
           self.faces = {}
-          self.coordinates = {}  
+          self.coordinates = {}
           self.last_frame = self.get(0)
           self.frame_shape = self.last_frame.shape[:2]
           self.last_location = (0, 200, 200, 0)
@@ -419,11 +418,11 @@ def main():
             face_positions = face_recognition.face_locations(self.last_frame, number_of_times_to_upsample=2)
             if len(face_positions) > 0:
               self.last_location = face_positions[0]
-            
+
         def load_coordinates(self, filename):
           np_coords = np.load(filename)
           self.coordinates = np_coords.item()
-            
+
         def expand_location_zone(self, loc, margin = 0.2):
           ''' Adds a margin around a frame slice '''
           offset = round(margin * (loc[2] - loc[0]))
@@ -432,7 +431,7 @@ def main():
           y1 = min(loc[2] + offset, self.frame_shape[0])
           x0 = max(loc[3] - offset, 0)
           return (y0, x1, y1, x0)
-            
+
         @staticmethod
         def upsample_location(reduced_location, upsampled_origin, factor):
           ''' Adapt a location to an upsampled image slice '''
@@ -454,11 +453,11 @@ def main():
                 max_size = size
                 max_location = location
           return max_location
-            
+
         @staticmethod
         def L2(A, B):
           return np.sqrt(np.sum(np.square(A - B)))
-            
+
         def find_coordinates(self, landmark, K = 2.2):
           '''
           We either choose K * distance(eyes, mouth),
@@ -484,9 +483,9 @@ def main():
               rot = -90
           else:
             rot = np.arctan((B[0] - E[0]) / (B[1] - E[1])) / np.pi * 180
-                
+
           return ((floor(C[1]), floor(C[0])), floor(l), rot)
-            
+
         def find_faces(self, resize = 0.5, stop = 0, skipstep = 0, no_face_acceleration_threshold = 3, cut_left = 0, cut_right = -1, use_frameset = False, frameset = []):
           '''
           The core function to extract faces from frames
@@ -495,7 +494,7 @@ def main():
           not_found = 0
           no_face = 0
           no_face_acc = 0
-                
+
           # to only deal with a subset of a video, for instance I-frames only
           if (use_frameset):
             finder_frameset = frameset
@@ -510,16 +509,16 @@ def main():
             frame = self.get(i)
             if (cut_left != 0 or cut_right != -1):
               frame[:, :cut_left] = 0
-              frame[:, cut_right:] = 0            
-                    
+              frame[:, cut_right:] = 0
+
             # Find face in the previously found zone
             potential_location = self.expand_location_zone(self.last_location)
             potential_face_patch = frame[potential_location[0]:potential_location[2], potential_location[3]:potential_location[1]]
             potential_face_patch_origin = (potential_location[0], potential_location[3])
-            
+
             reduced_potential_face_patch = zoom(potential_face_patch, (resize, resize, 1))
             reduced_face_locations = face_recognition.face_locations(reduced_potential_face_patch, model = 'cnn')
-                    
+
             if len(reduced_face_locations) > 0:
               no_face_acc = 0  # reset the no_face_acceleration mode accumulator
 
@@ -529,7 +528,7 @@ def main():
                                                      1 / resize)
               self.faces[i] = face_location
               self.last_location = face_location
-                        
+
               # extract face rotation, length and center from landmarks
               landmarks = face_recognition.face_landmarks(frame, [face_location])
               if len(landmarks) > 0:
@@ -545,20 +544,20 @@ def main():
                 # Avoid spending to much time on a long scene without faces
                 reduced_frame = zoom(frame, (resize, resize, 1))
                 face_locations = face_recognition.face_locations(reduced_frame)
-                            
+
               if len(face_locations) > 0:
                 st.write('Face extraction warning : ', i, '- found face in full frame', face_locations)
-                no_face_acc = 0  
-                            
+                no_face_acc = 0
+
                 face_location = self.pop_largest_location(face_locations)
-                            
+
                 # if was found on a reduced frame, upsample location
                 if no_face_acc > no_face_acceleration_threshold:
                   face_location = self.upsample_location(face_location, (0, 0), 1 / resize)
-                            
+
                   self.faces[i] = face_location
                   self.last_location = face_location
-                            
+
                   # extract face rotation, length and center from landmarks
                   landmarks = face_recognition.face_landmarks(frame, [face_location])
                   if len(landmarks) > 0:
@@ -571,7 +570,7 @@ def main():
           st.write('Face extraction report of', 'not_found :', not_found)
           st.write('Face extraction report of', 'no_face :', no_face)
           return 0
-            
+
         def get_face(self, i):
           ''' Basic unused face extraction without alignment '''
           frame = self.get(i)
@@ -580,7 +579,7 @@ def main():
             patch = frame[loc[0]:loc[2], loc[3]:loc[1]]
             return patch
           return frame
-            
+
         @staticmethod
         def get_image_slice(img, y0, y1, x0, x1):
           '''Get values outside the domain of an image'''
@@ -589,7 +588,7 @@ def main():
           padded_img = np.pad(img, ((padding, padding), (padding, padding), (0, 0)), 'reflect')
           return padded_img[(padding + y0):(padding + y1),
                             (padding + x0):(padding + x1)]
-            
+
         def get_aligned_face(self, i, l_factor = 1.3):
           '''
           The second core function that converts the data from self.coordinates into an face image.
@@ -628,7 +627,7 @@ def main():
         def resize_patch(self, patch):
           m, n = patch.shape[:2]
           return zoom(patch, (self.target_size / m, self.target_size / n, 1))
-            
+
         def next_batch(self, batch_size = 150):
           batch = np.zeros((1, self.target_size, self.target_size, 3))
           stop = min(self.head + batch_size, self.length)
@@ -660,7 +659,7 @@ def main():
           Extraction + Prediction over a video
           '''
           filenames = [f for f in listdir(dirname) if isfile(join(dirname, f)) and ((f[-4:] == '.mp4') or (f[-4:] == '.avi') or (f[-4:] == '.mov'))]
-          predictions = {}      
+          predictions = {}
           for vid in filenames:
             st.write('Dealing with video ', vid)
             # Compute face locations and store them in the face finder
@@ -670,23 +669,23 @@ def main():
             st.write('Predicting ', vid)
             gen = FaceBatchGenerator(face_finder)
             p = predict_faces(gen, Classifier)
-        
+
             predictions[vid[:-4]]=(np.mean(p > 0.5), p)
             #predictions.append((np.mean(p > 0.5), p))
           return predictions
-            
-           
+
+
           Classifier = Meso4()
           Classifier.load("saved_model/Meso4_F2F.h5")
-            
+
           predictions = compute_accuracy(Classifier,'tempDir')
           for video_name in predictions:
             st.write('`{}` video class prediction :'.format(video_name), predictions[video_name][0])
-      
-  
+
+
   elif choice == "About":
     st.write("This App Precits if an image or video is manipulated or authentic.")
     st.write("It also predicts youtube url and real-time webcam images.")
-      
+
 if __name__ == '__main__':
   main()
